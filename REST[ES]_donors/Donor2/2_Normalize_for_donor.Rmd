@@ -1,0 +1,35 @@
+---
+title: "Normalize Data"
+author: "Wesley Burr"
+date: "29/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+## Normalize Data
+
+We will load each of the data files, identify the 'primary' peak for
+Bromobenze, then normalize all Areas to be relative areas to the
+reference standard.
+
+```{r}
+load("/home/wburr/Rushali_REST/Donor2/D2.rda")
+D2m$Area<-as.numeric(D2m$Area)
+bromo <- D2m %>% 
+           group_by(Sample) %>% 
+           subset(Name == "Benzene, bromo-") %>%
+           filter(Area == max(Area))
+split_Donor <- D2m %>% 
+                group_by(Sample) %>%
+                group_split()
+for(j in 1:length(split_Donor)) {
+  split_Donor[[j]]$Area <- split_Donor[[j]]$Area / unlist(bromo[j, "Area"])
+}
+D2m <- do.call("rbind", split_Donor)
+save(file = "/home/wburr/Rushali_REST/Donor2/D2n.rda", D2m)
+```
+

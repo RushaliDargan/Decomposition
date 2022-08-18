@@ -1,0 +1,259 @@
+---
+title: "Merge"
+author: "Wesley Burr"
+date: "5/13/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load the Sheets
+
+```{r}
+library("readxl")
+```
+
+```{r Donor1}
+sheets <- excel_sheets("/home/wburr/Rushali_REST/Donor1/all_D1_cleaned_noIS.xlsx") 
+Donor1 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_REST/Donor1/all_D1_cleaned_noIS.xlsx",
+                     sheet = x) })
+names(Donor1) <- sheets
+```
+
+```{r Donor2}
+sheets <- excel_sheets("/home/wburr/Rushali_REST/Donor2/all_D2_cleaned_noIS.xlsx") 
+Donor2 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_REST/Donor2/all_D2_cleaned_noIS.xlsx",
+                     sheet = x) })
+names(Donor2) <- sheets
+```
+
+
+```{r Donor3}
+sheets <- excel_sheets("/home/wburr/Rushali_REST/Donor3/all_D3_cleaned_noIS.xlsx") 
+Donor3 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_REST/Donor3/all_D3_cleaned_noIS.xlsx",
+                     sheet = x) })
+names(Donor3) <- sheets
+```
+
+```{r Donor4}
+sheets <- excel_sheets("/home/wburr/Rushali_REST/Donor4/all_D4_cleaned_noIS.xlsx") 
+Donor4 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_REST/Donor4/all_D4_cleaned_noIS.xlsx",
+                     sheet = x) })
+names(Donor4) <- sheets
+```
+
+```{r Donor6}
+sheets <- excel_sheets("/home/wburr/Rushali_REST/Donor6/all_D6_cleaned_noIS.xlsx") 
+Donor6 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_REST/Donor6/all_D6_cleaned_noIS.xlsx",
+                     sheet = x) })
+names(Donor6) <- sheets
+```
+
+```{r Donor8}
+sheets <- excel_sheets("/home/wburr/Rushali_REST/Donor8/all_D8_cleaned_noIS.xlsx") 
+Donor8 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_REST/Donor8/all_D8_cleaned_noIS.xlsx",
+                     sheet = x) })
+names(Donor8) <- sheets
+```
+
+```{r Donor10}
+sheets <- excel_sheets("/home/wburr/Rushali_REST/Donor10/all_D10_cleaned_noIS.xlsx") 
+Donor10 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_REST/Donor10/all_D10_cleaned_noIS.xlsx",
+                     sheet = x) })
+names(Donor10) <- sheets
+```
+
+```{r Donor11}
+sheets <- excel_sheets("/home/wburr/Rushali_REST/Donor11/all_D11_cleaned_noIS.xlsx") 
+Donor11 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_REST/Donor11/all_D11_cleaned_noIS.xlsx",
+                     sheet = x) })
+names(Donor11) <- sheets
+```
+
+## Merge to Prepare for PCA
+
+The goal here is to extract all unique compounds from all objects, merge them,
+make a reference list, and then create a very large data.frame with rows
+being compounds, and columns being the various experimental samples, however
+many there are.
+
+```{r}
+Donor1_compounds <- unique(unlist(lapply(Donor1, FUN = function(x) { x$Name })))
+Donor2_compounds <- unique(unlist(lapply(Donor2, FUN = function(x) { x$Name })))
+Donor3_compounds <- unique(unlist(lapply(Donor3, FUN = function(x) { x$Name })))
+Donor4_compounds <- unique(unlist(lapply(Donor4, FUN = function(x) { x$Name })))
+Donor6_compounds <- unique(unlist(lapply(Donor6, FUN = function(x) { x$Name })))
+Donor8_compounds <- unique(unlist(lapply(Donor8, FUN = function(x) { x$Name })))
+Donor10_compounds <- unique(unlist(lapply(Donor10, FUN = function(x) { x$Name })))
+Donor11_compounds <- unique(unlist(lapply(Donor11, FUN = function(x) { x$Name })))
+# ... the rest
+```
+
+```{r}
+all_compounds <- unique(c(Donor1_compounds,
+                          Donor2_compounds, 
+                          Donor3_compounds, 
+                          Donor4_compounds, 
+                          Donor6_compounds, 
+                          Donor8_compounds, 
+                          Donor10_compounds, 
+                          Donor11_compounds
+                          )
+                       )
+```
+
+```{r}
+n_Donor1 <- length(Donor1)
+n_Donor2 <- length(Donor2)
+n_Donor3 <- length(Donor3)
+n_Donor4 <- length(Donor4)
+n_Donor6 <- length(Donor6)
+n_Donor8 <- length(Donor8)
+n_Donor10 <- length(Donor10)
+n_Donor11 <- length(Donor11)
+n_total <- n_Donor1 + n_Donor2 + n_Donor3 + n_Donor4 + n_Donor6 + 
+           n_Donor8 + n_Donor10 + n_Donor11
+```
+
+### Create the Data Frame
+
+```{r}
+all_data <- data.frame(matrix(data = 0.0, nrow = length(all_compounds),
+                              ncol = n_total + 1))
+all_data[, 1] <- all_compounds
+names(all_data) <- c("Name", names(Donor1), names(Donor2), names(Donor3), names(Donor4), names(Donor6), names(Donor8), names(Donor10), names(Donor11)) 
+```
+
+```{r do_Donor1}
+for(j in 1:length(Donor1)) {
+  x <- Donor1[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[which(all_data$Name == x_names[k]), j+1] <- x_area[k]
+  }
+ # all_data[all_data$Name %in% x_names, j+1] <- x_area  # the j+1 has to change
+}
+```
+
+```{r do_Donor2}
+for(j in 1:length(Donor2)) {
+  x <- Donor2[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[which(all_data$Name == x_names[k]), j+1+n_Donor1] <- x_area[k]
+  }
+}
+```
+
+```{r do_Donor3}
+for(j in 1:length(Donor3)) {
+  x <- Donor3[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[which(all_data$Name == x_names[k]), j+1+n_Donor1+n_Donor2] <- x_area[k]
+  }
+}
+```
+
+```{r do_Donor4}
+offset <- 1 + n_Donor1 + n_Donor2 + n_Donor3
+for(j in 1:length(Donor4)) {
+  x <- Donor4[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[which(all_data$Name == x_names[k]), j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r do_Donor6}
+offset <- 1 + n_Donor1 + n_Donor2 + n_Donor3 + n_Donor4
+for(j in 1:length(Donor6)) {
+  x <- Donor6[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[which(all_data$Name == x_names[k]), j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r do_Donor8}
+offset <- 1 + n_Donor1 + n_Donor2 + n_Donor3 + n_Donor4 + n_Donor6
+for(j in 1:length(Donor8)) {
+  x <- Donor8[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[which(all_data$Name == x_names[k]), j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r do_Donor10}
+offset <- 1 + n_Donor1 + n_Donor2 + n_Donor3 + n_Donor4 + n_Donor6 + n_Donor8
+for(j in 1:length(Donor10)) {
+  x <- Donor10[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[which(all_data$Name == x_names[k]), j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r do_Donor11}
+offset <- 1 + n_Donor1 + n_Donor2 + n_Donor3 + n_Donor4 + n_Donor6 + n_Donor8 + n_Donor10
+for(j in 1:length(Donor11)) {
+  x <- Donor11[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[which(all_data$Name == x_names[k]), j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r}
+write.csv(file = "pca_ready_all_donors.csv", all_data, row.names = FALSE)
+```
+
+

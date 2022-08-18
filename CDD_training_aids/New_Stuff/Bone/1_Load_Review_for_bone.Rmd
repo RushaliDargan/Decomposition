@@ -1,0 +1,283 @@
+---
+title: "Load & Review Data v2 (get all Bone sorted)"
+author: "Wesley"
+date: "2022/03/28"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load all of the Bone Data
+
+To start, we need to load all of the Excel files. To do this, we will use the
+readxl package. In addition, we're going to need to manipulate strings in 
+the following, so let's pre-emptively load that package.
+
+```{r libraries, error = FALSE, message = FALSE, warning = FALSE}
+library("readxl")
+library("stringr")
+```
+
+### Start with Bone 1, as Template
+
+Bone 1 has many sheets, each of which is a nicely organized listing of VOCs
+as detected by the GCxGC system's built-in scanning software, and exported. 
+We will load them all. 
+
+```{r load_data}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone1.xlsx")  # note: spaces in names
+Bone1 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone1.xlsx",
+                     sheet = x) })
+sheets <- str_replace_all(sheets, " ", "_")
+names(Bone1) <- sheets
+```
+
+Having things organized by sample is a good thing, but we really will
+find it annoying finding things long-term. In the following, I will take each
+of the lists of compounds relevant to Bone 1, and merge them into a single
+data.frame object, so we can then filter that frame down to get a specific
+compound, or a specific day/observation, and so on.
+
+
+```{r merge_sheets}
+Bone1m <- do.call("rbind", Bone1)
+names(Bone1m) <- c("PeakNum", "Sample", "Name", "Formula", "RTs", "1stRT","2ndRT","Similarity",
+                   "Area", "Height", "QuantMass", "BaseMass", "QuantSN", "PeakSN",
+                   "Type", "Conc", "ConcUnits")
+```
+
+A quick print of the data structure shows that the RTs, QuantMass and BaseMass
+won't be usable as numbers. The RTs need to be split, as well.
+
+```{r split_RTs}
+RT1 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone1m$RTs, ","), FUN = "[[", 1)
+         )
+       )
+RT2 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone1m$RTs, ","), FUN = "[[", 2)
+         )
+       )
+Bone1m <- data.frame(Bone1m[, c(1:4, 6:17)], RT1 = RT1, RT2 = RT2)
+```
+
+```{r samples}
+unique(Bone1m$Sample)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone1.rda", Bone1m)
+```
+
+### Now Do Bone 2
+
+```{r load_data2}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone2.xlsx")  # note: spaces in names
+Bone2 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone2.xlsx",
+                     sheet = x) })
+sheets <- str_replace_all(sheets, " ", "_")
+names(Bone2) <- sheets
+
+Bone2m <- do.call("rbind", Bone2)
+names(Bone2m) <- c("PeakNum", "Sample", "Name", "Formula", "RTs","1stRT","2ndRT", "Similarity",
+                   "Area", "Height", "QuantMass", "BaseMass", "QuantSN", "PeakSN",
+                   "Type", "Conc", "ConcUnits")
+```
+
+```{r split_RTs2}
+RT1 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone2m$RTs, ","), FUN = "[[", 1)
+         )
+       )
+RT2 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone2m$RTs, ","), FUN = "[[", 2)
+         )
+       )
+Bone2m <- data.frame(Bone2m[, c(1:4, 6:17)], RT1 = RT1, RT2 = RT2)
+```
+
+```{r samples2}
+unique(Bone2m$Sample)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone2.rda", Bone2m)
+```
+
+### Now Do Bone 3
+
+```{r load_data3}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone3.xlsx")  # note: spaces in names
+Bone3 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone3.xlsx",
+                     sheet = x) })
+sheets <- str_replace_all(sheets, " ", "_")
+names(Bone3) <- sheets
+
+Bone3m <- do.call("rbind", Bone3)
+names(Bone3m) <- c("PeakNum", "Sample", "Name", "Formula", "RTs","1stRT","2ndRT", "Similarity",
+                   "Area", "Height", "QuantMass", "BaseMass", "QuantSN", "PeakSN",
+                   "Type", "Conc", "ConcUnits")
+```
+
+```{r split_RTs3}
+RT1 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone3m$RTs, ","), FUN = "[[", 1)
+         )
+       )
+RT2 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone3m$RTs, ","), FUN = "[[", 2)
+         )
+       )
+Bone3m <- data.frame(Bone3m[, c(1:4, 6:17)], RT1 = RT1, RT2 = RT2)
+```
+
+```{r samples2}
+unique(Bone3m$Sample)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone3.rda", Bone3m)
+```
+
+### Now Do Bone 4
+
+```{r load_data4}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone4.xlsx")  # note: spaces in names
+Bone4 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone4.xlsx",
+                     sheet = x) })
+sheets <- str_replace_all(sheets, " ", "_")
+names(Bone4) <- sheets
+
+Bone4m <- do.call("rbind", Bone4)
+names(Bone4m) <- c("PeakNum", "Sample", "Name", "Formula", "RTs", "1stRT","2ndRT","Similarity",
+                   "Area", "Height", "QuantMass", "BaseMass", "QuantSN", "PeakSN",
+                   "Type", "Conc", "ConcUnits")
+```
+
+```{r split_RTs4}
+RT1 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone4m$RTs, ","), FUN = "[[", 1)
+         )
+       )
+RT2 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone4m$RTs, ","), FUN = "[[", 2)
+         )
+       )
+Bone4m <- data.frame(Bone4m[, c(1:4, 6:17)], RT1 = RT1, RT2 = RT2)
+```
+
+```{r samples2}
+unique(Bone4m$Sample)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone4.rda", Bone4m)
+```
+
+### Now Do Bone 5
+
+```{r load_data5}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone5.xlsx")  # note: spaces in names
+Bone5 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone5.xlsx",
+                     sheet = x) })
+sheets <- str_replace_all(sheets, " ", "_")
+names(Bone5) <- sheets
+
+Bone5m <- do.call("rbind", Bone5)
+names(Bone5m) <- c("PeakNum", "Sample", "Name", "Formula", "RTs", "1stRT","2ndRT","Similarity",
+                   "Area", "Height", "QuantMass", "BaseMass", "QuantSN", "PeakSN",
+                   "Type", "Conc", "ConcUnits")
+```
+
+```{r split_RTs4}
+RT1 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone5m$RTs, ","), FUN = "[[", 1)
+         )
+       )
+RT2 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone5m$RTs, ","), FUN = "[[", 2)
+         )
+       )
+Bone5m <- data.frame(Bone5m[, c(1:4, 6:17)], RT1 = RT1, RT2 = RT2)
+```
+
+```{r samples2}
+unique(Bone5m$Sample)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone5.rda", Bone5m)
+```
+
+### Now Do Bone 6
+
+```{r load_data6}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone6.xlsx")  # note: spaces in names
+Bone6 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone6.xlsx",
+                     sheet = x) })
+sheets <- str_replace_all(sheets, " ", "_")
+names(Bone6) <- sheets
+
+Bone6m <- do.call("rbind", Bone6)
+names(Bone6m) <- c("PeakNum", "Sample", "Name", "Formula", "RTs", "1stRT","2ndRT","Similarity",
+                   "Area", "Height", "QuantMass", "BaseMass", "QuantSN", "PeakSN",
+                   "Type", "Conc", "ConcUnits")
+```
+
+```{r split_RTs4}
+RT1 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone6m$RTs, ","), FUN = "[[", 1)
+         )
+       )
+RT2 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone6m$RTs, ","), FUN = "[[", 2)
+         )
+       )
+Bone6m <- data.frame(Bone6m[, c(1:4, 6:17)], RT1 = RT1, RT2 = RT2)
+```
+
+```{r samples2}
+unique(Bone6m$Sample)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone6.rda", Bone6m)
+```
+
+### Now Do Bone 7
+
+```{r load_data7}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone7.xlsx")  # note: spaces in names
+Bone7 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone7.xlsx",
+                     sheet = x) })
+sheets <- str_replace_all(sheets, " ", "_")
+names(Bone7) <- sheets
+
+Bone7m <- do.call("rbind", Bone7)
+names(Bone7m) <- c("PeakNum", "Sample", "Name", "Formula", "RTs", "1stRT","2ndRT","Similarity",
+                   "Area", "Height", "QuantMass", "BaseMass", "QuantSN", "PeakSN",
+                   "Type", "Conc", "ConcUnits")
+```
+
+```{r split_RTs4}
+RT1 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone7m$RTs, ","), FUN = "[[", 1)
+         )
+       )
+RT2 <- as.numeric(
+         unlist(
+           lapply(strsplit(Bone7m$RTs, ","), FUN = "[[", 2)
+         )
+       )
+Bone7m <- data.frame(Bone7m[, c(1:4, 6:17)], RT1 = RT1, RT2 = RT2)
+```
+
+```{r samples2}
+unique(Bone7m$Sample)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone7.rda", Bone7m)
+```
+

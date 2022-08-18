@@ -1,0 +1,56 @@
+---
+title: "Normalize Data"
+author: "Wesley Burr"
+date: "29/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+## Normalize Data
+
+We will load each of the data files, identify the 'primary' peak for
+Bromobenze, then normalize all Areas to be relative areas to the
+reference standard.
+
+```{r}
+load("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone1.rda")
+bromo <- Bone1m %>% 
+           group_by(Sample) %>% 
+           subset(Name == "Benzene, bromo-") %>%
+           filter(Area == max(Area))
+split_Bone <- Bone1m %>% 
+                group_by(Sample) %>%
+                group_split()
+for(j in 1:length(split_Bone)) {
+  split_Bone[[j]]$Area <- split_Bone[[j]]$Area / unlist(bromo[j, "Area"])
+}
+Bone1m <- do.call("rbind", split_Bone)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone1n.rda", Bone1m)
+```
+
+This worked, now let's just loop the others to save writing:
+
+```{r}
+for(k in 2:7) {
+  load(paste0("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone", k, ".rda"))
+  Bone <- get(x = paste0("Bone", k, "m"))
+  bromo <- Bone %>% 
+           group_by(Sample) %>% 
+           subset(Name == "Benzene, bromo-") %>%
+           filter(Area == max(Area))
+  split_Bone <- Bone %>% 
+                group_by(Sample) %>%
+                group_split()
+  for(j in 1:length(split_Bone)) {
+    split_Bone[[j]]$Area <- split_Bone[[j]]$Area / unlist(bromo[j, "Area"])
+  }
+  Bone <- do.call("rbind", split_Bone)
+  assign(x = paste0("Bone", k, "m"), value = Bone)
+  save(file = paste0("/home/wburr/Rushali_Analysis/New_Stuff/Bone/Bone", k, "n.rda"), list = paste0("Bone", k, "m"))
+}
+```
+

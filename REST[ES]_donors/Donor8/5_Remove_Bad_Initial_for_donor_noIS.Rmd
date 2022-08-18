@@ -1,0 +1,514 @@
+---
+title: "Setting up for PCA"
+author: "Wesley Burr"
+date: "29/03/2022"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(stringr)
+```
+
+
+
+```{r function}
+##
+#  clean_common: Function to select, filter, clean, filter and merge 
+#  compounds using the logic of:
+#  * unique to the samples, not the control, for ALL samples; or
+#  * in both samples and control, but much stronger in the control
+# 
+#  Inputs:
+#  * dat: data.frame sourced from merging spreadsheets of GCxGC output
+#  * sample_names: names of specific samples (e.g., D1ad0)
+#  * control_names: names of specific control samples (e.g., Control_D1d0)
+#  * ratio_par: cut-off for the logic of "in both samples and control" - if this
+#      is set very large, will eliminate cross-overs.
+#
+#  Returns:
+#  * samples_keep: list of full data.frames for individual replicates, cleaned
+#      down to relevant compounds using above logic
+##
+clean_common <- function(dat,
+                         sample_names,
+                         control_names,
+                         ratio_par = 2.0) {
+  
+  samples <- vector("list", length = length(sample_names))
+  names(samples) <- sample_names
+  controls <- vector("list", length = length(control_names))
+  names(controls) <- control_names
+  
+  # Extract specific samples and controls of interest and
+  # dump all but the largest Area example of each compound
+  for(j in 1:length(sample_names)) {
+    samples[[j]] <- dat %>% subset(Sample == sample_names[j]) %>%
+                      group_by(Name) %>%
+                      filter(Area == max(Area)) %>%
+                      ungroup() %>% filter(substr(Name, 1, 4) != "Peak")
+    samples[[j]] <- samples[[j]][!duplicated(samples[[j]]$Name), ]
+  } 
+  for(j in 1:length(control_names)) {
+    controls[[j]] <- dat %>% subset(Sample == control_names[j]) %>%
+                      group_by(Name) %>%
+                      filter(Area == max(Area)) %>%
+                      ungroup() %>% filter(substr(Name, 1, 4) != "Peak")
+    controls[[j]] <- controls[[j]][!duplicated(controls[[j]]$Name), ]
+  } 
+  # merge controls
+  control <- do.call("rbind", controls)
+  control <- control %>% group_by(Name) %>%
+                      filter(Area == max(Area)) %>%
+                      ungroup() 
+  control <- control[!duplicated(control$Name), ]
+
+  # Find compounds that are in each sample that are also in control
+  samples_keep <- samples
+  for(j in 1:length(sample_names)) {
+    samp <- samples[[j]] %>% filter(samples[[j]]$Name %in% control$Name)
+    cont <- control %>% filter(control$Name %in% samples[[j]]$Name)
+   
+    # ratio is high enough to keep 
+    samp_SN <- unlist(samp[order(samp$Name), "PeakSN"])
+    cont_SN <- unlist(cont[order(cont$Name), "PeakSN"])
+    contrib1 <- samp %>% filter((samp_SN / cont_SN) > ratio_par)
+   
+    # also, compounds that are *not* in the controls 
+    contrib2 <- samples[[j]] %>% filter(!(samples[[j]]$Name %in% control$Name))
+    samples_keep[[j]] <- rbind(contrib1, contrib2)
+  }
+  names(samples_keep) <- sample_names
+  samples_keep
+}
+
+
+##
+#
+#  join_common: Function which takes output of clean_common above,
+#    and merges based on common presence across all replicates of compounds. 
+#
+#  Inputs:
+#  * compounds: list of data.frames, 16 columns as in the spreadsheets
+#  
+#  Outputs:
+#  * common: merged, simplified data.frame, created via inner_join of data.frames after filtering.
+##
+join_common <- function(compounds) {
+  n_samp <- length(compounds)
+  subset_compounds <- vector("list", length = n_samp)
+  for(j in 1:n_samp) {
+    subset_compounds[[j]] <- compounds[[j]]
+    if(n_samp > 1) {
+      for(k in (1:n_samp)[-j]) {
+        subset_compounds[[j]] <- subset_compounds[[j]] %>%
+                                   subset(subset_compounds[[j]]$Name %in% compounds[[k]]$Name)
+      }
+    }
+    subset_compounds[[j]] <- subset_compounds[[j]] %>% select(Name, Area, PeakSN)
+  }
+  
+  # Join first two, if they exist
+  if(n_samp > 1) {
+    common <- inner_join(x = subset_compounds[[1]], y = subset_compounds[[2]], by = "Name")
+    if(n_samp >= 3) {
+      for(j in 3:n_samp) {
+        common <- inner_join(x = common, y = subset_compounds[[j]], by = "Name")  
+      }
+    }
+  } else {
+    common <- subset_compounds[[1]][, c("Name", "Area", "PeakSN")]
+  }
+  names(common) <- c("Name", paste0(c("Area_", "PeakSN_"), rep(1:n_samp, each = 2)))
+  common
+}
+```
+
+# Working Through Donor
+
+```{r Donor8}
+load("/home/wburr/Rushali_REST/Donor8/D8n.rda")
+D8m$PeakSN<-as.numeric(D8m$PeakSN)
+D8m$Sample <- str_replace_all(D8m$Sample, " ", "_")
+
+D8d0 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad0", "D8bd0", "D8cd0"),
+                control_names = c("Control_D8d0"),
+                ratio_par = 2.0) )
+D8d1 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad1", "D8bd1", "D8cd1"),
+                control_names = c("Control_D8d1"),
+                ratio_par = 2.0) )
+D8d2 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad2", "D8bd2", "D8cd2"),
+                control_names = c("Control_D8d2"),
+                ratio_par = 2.0) )
+D8d3 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad3", "D8bd3", "D8cd3"),
+                control_names = c("Control_D8d3"),
+                ratio_par = 2.0) )
+D8d4 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad4", "D8bd4", "D8cd4"),
+                control_names = c("Control_D8d4"),
+                ratio_par = 2.0) )
+D8d5 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad5", "D8bd5", "D8cd5"),
+                control_names = c("Control_D8d5"),
+                ratio_par = 2.0) )
+D8d6 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad6", "D8bd6", "D8cd6"),
+                control_names = c("Control_D8d6"),
+                ratio_par = 2.0) )
+D8d9 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad9", "D8bd9", "D8cd9"),
+                control_names = c("Control_D8d9"),
+                ratio_par = 2.0) )
+D8d11 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad11", "D8bd11", "D8cd11"),
+                control_names = c("Control_D8d11"),
+                ratio_par = 2.0) )
+D8d13 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad13", "D8bd13", "D8cd13"),
+                control_names = c("Control_D8d13"),
+                ratio_par = 2.0) )
+D8d16 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad16", "D8bd16", "D8cd16"),
+                control_names = c("Control_D8d16"),
+                ratio_par = 2.0) )
+D8d18 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad18", "D8bd18", "D8cd18"),
+                control_names = c("Control_D8d18"),
+                ratio_par = 2.0) )
+D8d20 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad20", "D8bd20", "D8cd20"),
+                control_names = c("Control_D8d20"),
+                ratio_par = 2.0) )
+D8d24 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad24", "D8bd24", "D8cd24"),
+                control_names = c("Control_D8d24"),
+                ratio_par = 2.0) )
+D8d27 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad27", "D8bd27", "D8cd27"),
+                control_names = c("Control_D8d27"),
+                ratio_par = 2.0) )
+D8d31 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad31", "D8bd31", "D8cd31"),
+                control_names = c("Control_D8d31"),
+                ratio_par = 2.0) )
+D8d34 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad34", "D8bd34", "D8cd34"),
+                control_names = c("Control_D8d34"),
+                ratio_par = 2.0) )
+D8d39 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad39", "D8bd39", "D8cd39"),
+                control_names = c("Control_D8d39"),
+                ratio_par = 2.0) )
+D8d46 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad46", "D8bd46", "D8cd46"),
+                control_names = c("Control_D8d46"),
+                ratio_par = 2.0) )
+D8d53 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad53", "D8bd53", "D8cd53"),
+                control_names = c("Control_D8d53"),
+                ratio_par = 2.0) )
+D8d66 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad66", "D8ab66", "D8cd66"),
+                control_names = c("Control_D8d66"),
+                ratio_par = 2.0) )
+D8d72 <- join_common( clean_common(D8m,
+                sample_names = c("D8ad72", "D8bd72", "D8cd72"),
+                control_names = c("Control_D8d72"),
+                ratio_par = 2.0) )
+```
+
+
+
+
+```{r}
+all_d <- vector("list", 22)
+all_d[[1]] <- D8d0
+all_d[[2]] <- D8d1
+all_d[[3]] <- D8d2
+all_d[[4]] <- D8d3
+all_d[[5]] <- D8d4
+all_d[[6]] <- D8d5
+all_d[[7]] <- D8d6
+all_d[[8]] <- D8d9
+all_d[[9]] <- D8d11
+all_d[[10]] <- D8d13
+all_d[[11]] <- D8d16
+all_d[[12]] <- D8d18
+all_d[[13]] <- D8d20
+all_d[[14]] <- D8d24
+all_d[[15]] <- D8d27
+all_d[[16]] <- D8d31
+all_d[[17]] <- D8d34
+all_d[[18]] <- D8d39
+all_d[[19]] <- D8d46
+all_d[[20]] <- D8d53
+all_d[[21]] <- D8d66
+all_d[[22]] <- D8d72
+
+names(all_d) <- c(paste0("D8d0"),
+                  paste0("D8d1"),
+                  paste0("D8d2"),
+                  paste0("D8d3"),
+                  paste0("D8d4"),
+                  paste0("D8d5"),
+                  paste0("D8d6"),
+                  paste0("D8d9"),
+                  paste0("D8d11"),
+                  paste0("D8d13"),
+                  paste0("D8d16"),
+                  paste0("D8d18"),
+                  paste0("D8d20"),
+                  paste0("D8d24"),
+                  paste0("D8d27"),
+                  paste0("D8d31"),
+                  paste0("D8d34"),
+                  paste0("D8d39"),
+                  paste0("D8d46"),
+                  paste0("D8d53"),
+                  paste0("D8d66"),
+                  paste0("D8d72"))
+save(file = "/home/wburr/Rushali_REST/Donor8/all_D8_PCA_noIS.rda", all_d)
+rm(list = ls())
+load("/home/wburr/Rushali_REST/Donor8/all_D8_PCA_noIS.rda")
+```
+
+
+## Cleanup Rushali Noted Compounds Throughout
+
+There are a number of compounds that have to do with the
+column, the reference standard (somehow coming through), 
+and other definitely not-related things. We will strip
+them out now, in preparation for PCA.
+
+### Remove Explicitly
+
+The following compounds are definitely not related to decomp,
+and are related to the process or environment, and need to be
+removed:
+
+* Bromobenzene (or Benzene, bromo) 
+* Oxygen
+* Acetone
+* Methyl alcohol / Methanol
+* Carbon dioxide
+
+Before we start that, we'll make a list of the actual
+"appearances" of compounds, and then check against this
+to determine the actual filtering arguments (e.g., first 8 characters
+or full name, etc.).
+
+```{r}
+all_compounds <- sort(unique(
+  unlist(lapply(all_d, FUN = function(x) { unlist(x$Name) }))))
+length(all_compounds)
+```
+
+So there are 607 unique compounds present across the 
+total samples, after Controlling (but with the 2.0 ratio
+argument in place). Let's look for each of the above compounds:
+
+```{r benz}
+loc1 <- grep(pattern = "Benzene, bromo-", all_compounds, 
+             ignore.case = TRUE)
+# all_compounds[loc1]
+```
+
+```{r oxy}
+loc2 <- grep(pattern = "oxygen", all_compounds, ignore.case = TRUE)
+# all_compounds[loc2]
+```
+
+```{r acetone}
+if("Acetone" %in% all_compounds) {
+  loc3 <- which("Acetone" %in% all_compounds)
+} else {
+  loc3 <- NULL
+}
+# all_compounds[loc3]
+```
+
+```{r methyl}
+loc4 <- which("Methyl Alcohol" %in% all_compounds)
+# all_compounds[loc4]
+loc5 <- grep(pattern = "methanol, TMS", all_compounds, 
+             ignore.case = TRUE)
+# all_compounds[loc5]
+```
+
+```{r co2}
+loc6 <- grep(pattern = "carbon dioxide", all_compounds, ignore.case = TRUE)
+# all_compounds[loc6]
+```
+
+Put them together as indexes, then extract these from the
+list of compounds as actual names.
+
+```{r}
+remove_specifics <- c(loc1, loc2, loc3, loc4, loc5, loc6)
+remove1 <- all_compounds[remove_specifics]
+```
+
+### Remove Via Keyword
+
+There are three keywords that show up that we should also
+strip out:
+
+* Sil
+* TMS
+* TBDMS
+
+Let's grab these now:
+
+```{r}
+loc1 <- grep(pattern = "Sil", all_compounds, ignore.case = TRUE)
+# all_compounds[loc1]
+loc2 <- grep(pattern = "TMS", all_compounds)
+# all_compounds[loc2]
+loc3 <- grep(pattern = "TBDMS", all_compounds)
+# all_compounds[loc3]
+remove2 <- all_compounds[c(loc1, loc2, loc3)]
+```
+
+### Merge Compounds
+
+We need some logic to look for things that are the same
+compound, but different in only stereochemistry. The
+indicator seems to be brackets: (E), (Z), (S),
+popping up in one or more of the variants. So there might be,
+for example, 2-Octene, (E)- as a compound, and then another
+sample might have 2-Octene, (Z)-. These should just be merged. 
+
+Let's try to look for them first:
+
+```{r}
+loc1 <- grep(pattern = "\\(E\\)-$", all_compounds)
+loc2 <- grep(pattern = "\\(Z\\)-$", all_compounds)
+loc3 <- grep(pattern = "\\(S\\)-$", all_compounds)
+loc4 <- grep(pattern = "\\(R\\)-$", all_compounds)
+to_clean <- c(loc1, loc2, loc3, loc4)
+```
+
+Now, the tricky bit: how to fix this up. What we want
+are these compounds, and their corresponding compounds which
+**don't** have the (S), (Z), (R) or (E); or have a different one.
+In all cases, we'll merge them down to the **doesn't have brackets**
+version if it exists, or if it doesn't, we'll make one.
+
+```{r}
+mappings <- data.frame(Original = NA, Transformed = NA)
+for(j in 1:length(to_clean)) {
+  orig <- all_compounds[to_clean[j]]
+  fixed <- strsplit(orig, "\\(")[[1]][1]
+  fixed <- substr(fixed, 1, nchar(fixed) - 2)
+  mappings[j, ] <- c(orig, 
+                     fixed)
+}
+```
+
+## Back to the Original Data, Ready to Rock & Roll
+
+So we have remove1 - compounds to remove. We have remove2 - 
+more compounds to remove. And we have mappings, which have
+compounds that need to be renamed. Then, at the end, we need
+to check for duplicates, because the renaming may have 
+resulted in more than one compound surviving in a single sample
+due to the stereochemistry issue. 
+
+```{r}
+test <- lapply(all_d, FUN = function(x) { 
+    y <- x %>% filter(!(Name %in% remove1 | Name %in% remove2))
+    which_rows <- which(y$Name %in% mappings$Original)
+    if(length(which_rows) > 0) {
+      for(j in 1:length(which_rows)) {
+        orig <- unlist(y[which_rows[j], "Name"])
+        y[which_rows[j], "Name"] <- mappings[mappings$Original == orig,
+                                             "Transformed"]
+      }
+    }
+    y
+  })
+```
+
+Now, look for duplicates, and remove if any now exist:
+
+```{r}
+test <- lapply(test, FUN = function(x) { 
+    dupes <- which(duplicated(x$Name))
+    if(length(dupes) > 0) {
+      x[-dupes, ]
+    } else {
+      x
+    }
+  })
+```
+
+We're done! All fixed up. Let's write this back out to an Excel
+file for Rushali to take a look at.
+
+```{r}
+library("xlsx")
+names(test)[1]
+write.xlsx(x = test[[1]],
+           file = "/home/wburr/Rushali_REST/Donor8/all_D8_cleaned_noIS.xlsx",
+           sheetName = names(test)[1], 
+           col.names = TRUE,
+           row.names = TRUE,
+           append = FALSE)
+for(j in 2:length(test)) {
+  write.xlsx(x = test[[j]],
+             file = "/home/wburr/Rushali_REST/Donor8/all_D8_cleaned_noIS.xlsx",
+             sheetName = names(test)[j],
+             col.names = TRUE,
+             row.names = TRUE,
+             append = TRUE) 
+}
+```
+
+
+## Back to PCA
+
+Now, the objective is to create "blanked" vectors, with 0s inserted in the
+spots where detection was not found. This requires a full list of 
+unique compounds, then we PCA away.
+
+```{r}
+unique_compounds <- sort(unique(
+      unlist(lapply(test, FUN = function(x) { x$Name }))))
+```
+
+Then, let's create a set of vectors, 22 in total.
+
+```{r}
+pca_dat <- as.data.frame(matrix(data = 0.0, nrow = length(unique_compounds),
+                                ncol = 23))
+pca_dat[, 1] <- unique_compounds
+names(pca_dat) <- c("Name", names(test))
+for(j in 1:length(test)) {
+  x <- test[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(2, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  # manually loop through, so we don't get rearrangements ...
+  for(k in 1:length(x_names)) {
+    pca_dat[pca_dat$Name == x_names[k], j+1] <- x_area[k]
+  }
+  #pca_dat[pca_dat$Name %in% x_names, j+1] <- x_area
+}
+extracting <- pca_dat[, -1]
+extracting <- apply(extracting, MAR = 2, FUN = function(x) { as.numeric(x) })
+row.names(extracting) <- pca_dat$Name
+pca_dat <- extracting
+
+write.csv(file = "pca_ready_D8_noIS.csv", pca_dat)
+```
+

@@ -1,0 +1,69 @@
+---
+title: "Normalize Data"
+author: "Wesley Burr"
+date: "29/03/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+```
+
+## Normalize Data
+
+We will load each of the data files, identify the 'primary' peak for
+Bromobenze, then normalize all Areas to be relative areas to the
+reference standard.
+
+```{r}
+load("/home/wburr/Rushali_Analysis/New_Stuff/Tissue/Tissue1.rda")
+Tissue1m$Area<-as.numeric(Tissue1m$Area)
+bromo <- Tissue1m %>% 
+           group_by(Sample) %>% 
+           subset(Name == "Benzene, bromo-") %>%
+           filter(Area == max(Area))
+split_Tissue <- Tissue1m %>% 
+                group_by(Sample) %>%
+                group_split()
+for(j in 1:length(split_Tissue)) {
+  split_Tissue[[j]]$Area <- split_Tissue[[j]]$Area / unlist(bromo[j, "Area"])
+}
+Tissue1m <- do.call("rbind", split_Tissue)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Tissue/Tissue1n.rda", Tissue1m)
+```
+
+```{r}
+load("/home/wburr/Rushali_Analysis/New_Stuff/Tissue/Tissue2.rda")
+Tissue2m$Area<-as.numeric(Tissue2m$Area)
+bromo <- Tissue2m %>% 
+           group_by(Sample) %>% 
+           subset(Name == "Benzene, bromo-") %>%
+           filter(Area == max(Area))
+split_Tissue <- Tissue2m %>% 
+                group_by(Sample) %>%
+                group_split()
+for(j in 1:length(split_Tissue)) {
+  split_Tissue[[j]]$Area <- split_Tissue[[j]]$Area / unlist(bromo[j, "Area"])
+}
+Tissue2m <- do.call("rbind", split_Tissue)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Tissue/Tissue2n.rda", Tissue2m)
+```
+
+```{r}
+load("/home/wburr/Rushali_Analysis/New_Stuff/Tissue/Tissue3.rda")
+Tissue3m$Area<-as.numeric(Tissue3m$Area)
+bromo <- Tissue3m %>% 
+           group_by(Sample) %>% 
+           subset(Name == "Benzene, bromo-") %>%
+           filter(Area == max(Area))
+split_Tissue <- Tissue3m %>% 
+                group_by(Sample) %>%
+                group_split()
+for(j in 1:length(split_Tissue)) {
+  split_Tissue[[j]]$Area <- split_Tissue[[j]]$Area / unlist(bromo[j, "Area"])
+}
+Tissue3m <- do.call("rbind", split_Tissue)
+save(file = "/home/wburr/Rushali_Analysis/New_Stuff/Tissue/Tissue3n.rda", Tissue3m)
+```
+

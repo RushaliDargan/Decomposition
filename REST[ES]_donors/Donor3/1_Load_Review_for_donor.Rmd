@@ -1,0 +1,71 @@
+---
+title: "Load & Review Data v2 (get all Donor sorted)"
+author: "Wesley"
+date: "2022/03/28"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load all of the Donor Data
+
+To start, we need to load all of the Excel files. To do this, we will use the
+readxl package. In addition, we're going to need to manipulate strings in 
+the following, so let's pre-emptively load that package.
+
+```{r libraries, error = FALSE, message = FALSE, warning = FALSE}
+library("readxl")
+library("stringr")
+```
+
+### Start with Donor3, as Template
+
+Donor 3 has many sheets, each of which is a nicely organized listing of VOCs
+as detected by the GCxGC system's built-in scanning software, and exported. 
+We will load them all. 
+
+```{r load_data}
+sheets <- excel_sheets("/home/wburr/Rushali_REST/Donor_dat/D3.xlsx")  # note: spaces in names
+D3 <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_REST/Donor_dat/D3.xlsx",
+                     sheet = x) })
+sheets <- str_replace_all(sheets, " ", "_")
+names(D3) <- sheets
+```
+
+Having things organized by sample is a good thing, but we really will
+find it annoying finding things long-term. In the following, I will take each
+of the lists of compounds relevant to Donor 3, and merge them into a single
+data.frame object, so we can then filter that frame down to get a specific
+compound, or a specific day/observation, and so on.
+
+```{r merge_sheets}
+D3m <- do.call("rbind", D3)
+names(D3m) <- c("PeakNum", "Sample", "Name", "Formula", "RTs", "1stRT","2ndRT","Similarity",
+                   "Area", "Height", "QuantMass", "BaseMass", "QuantSN", "PeakSN",
+                   "Type", "Conc", "ConcUnits")
+```
+
+A quick print of the data structure shows that the RTs, QuantMass and BaseMass
+won't be usable as numbers. The RTs need to be split, as well.
+
+```{r split_RTs}
+RT1 <- as.numeric(
+         unlist(
+           lapply(strsplit(D3m$RTs, ","), FUN = "[[", 1)
+         )
+       )
+RT2 <- as.numeric(
+         unlist(
+           lapply(strsplit(D3m$RTs, ","), FUN = "[[", 2)
+         )
+       )
+D3m <- data.frame(D3m[, c(1:4, 6:17)], RT1 = RT1, RT2 = RT2)
+```
+
+```{r samples}
+unique(D3m$Sample)
+save(file = "/home/wburr/Rushali_REST/Donor3/D3.rda", D3m)
+```

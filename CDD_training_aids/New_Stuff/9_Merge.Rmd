@@ -1,0 +1,257 @@
+---
+title: "Merge"
+author: "Wesley Burr"
+date: "5/13/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load the Sheets
+
+```{r}
+library("readxl")
+```
+
+```{r feet}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Foot_trial_average/all_feet_cleaned.xlsx") 
+feet <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Foot_trial_average/all_feet_cleaned.xlsx",
+                     sheet = x) })
+names(feet) <- sheets
+```
+
+```{r tissue}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Tissue/all_Tissue_cleaned.xlsx") 
+tissue <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Tissue/all_Tissue_cleaned.xlsx",
+                     sheet = x) })
+names(tissue) <- sheets
+```
+
+
+```{r bone}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Bone/all_Bone_cleaned.xlsx") 
+bone <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Bone/all_Bone_cleaned.xlsx",
+                     sheet = x) })
+names(bone) <- sheets
+```
+
+```{r blood}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Blood/all_Blood_cleaned.xlsx") 
+blood <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Blood/all_Blood_cleaned.xlsx",
+                     sheet = x) })
+names(blood) <- sheets
+```
+
+```{r teeth}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Teeth/all_teeth_cleaned.xlsx") 
+teeth <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Teeth/all_teeth_cleaned.xlsx",
+                     sheet = x) })
+names(teeth) <- sheets
+```
+```{r FootB}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Foot B/all_FootB_cleaned.xlsx") 
+FootB <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Foot B/all_FootB_cleaned.xlsx",
+                     sheet = x) })
+names(FootB) <- sheets
+```
+```{r FootR}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/Foot R/all_FootR_cleaned.xlsx") 
+FootR <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/Foot R/all_FootR_cleaned.xlsx",
+                     sheet = x) })
+names(FootR) <- sheets
+```
+
+```{r FootS}
+sheets <- excel_sheets("/home/wburr/Rushali_Analysis/New_Stuff/FootS/all_FootS_cleaned.xlsx") 
+FootS <- lapply(sheets, FUN = function(x) {
+           read_xlsx(path = "/home/wburr/Rushali_Analysis/New_Stuff/FootS/all_FootS_cleaned.xlsx",
+                     sheet = x) })
+names(FootS) <- sheets
+```
+
+## Merge to Prepare for PCA
+
+The goal here is to extract all unique compounds from all objects, merge them,
+make a reference list, and then create a very large data.frame with rows
+being compounds, and columns being the various experimental samples, however
+many there are.
+
+```{r}
+feet_compounds <- unique(unlist(lapply(feet, FUN = function(x) { x$Name })))
+tissue_compounds <- unique(unlist(lapply(tissue, FUN = function(x) { x$Name })))
+bone_compounds <- unique(unlist(lapply(bone, FUN = function(x) { x$Name })))
+blood_compounds <- unique(unlist(lapply(blood, FUN = function(x) { x$Name })))
+teeth_compounds <- unique(unlist(lapply(teeth, FUN = function(x) { x$Name })))
+FootB_compounds <- unique(unlist(lapply(FootB, FUN = function(x) { x$Name })))
+FootR_compounds <- unique(unlist(lapply(FootR, FUN = function(x) { x$Name })))
+FootS_compounds <- unique(unlist(lapply(FootS, FUN = function(x) { x$Name })))
+# ... the rest
+```
+
+```{r}
+all_compounds <- unique(c(feet_compounds,
+                          tissue_compounds, 
+                          bone_compounds, 
+                          blood_compounds, 
+                          teeth_compounds, 
+                          FootB_compounds, 
+                          FootR_compounds, 
+                          FootS_compounds
+                          )
+                       )
+```
+
+```{r}
+n_feet <- length(feet)
+n_tissue <- length(tissue)
+n_bone <- length(bone)
+n_blood <- length(blood)
+n_teeth <- length(teeth)
+n_FootB <- length(FootB)
+n_FootR <- length(FootR)
+n_FootS <- length(FootS)
+n_total <- n_feet + n_tissue + n_bone + n_blood + n_teeth + 
+           n_FootB + n_FootR + n_FootS
+```
+
+### Create the Data Frame
+
+```{r}
+all_data <- data.frame(matrix(data = 0.0, nrow = length(all_compounds),
+                              ncol = n_total + 1))
+all_data[, 1] <- all_compounds
+names(all_data) <- c("Name", names(feet), names(tissue), names(bone), names(blood), names(teeth), names(FootB), names(FootR), names(FootS)) 
+```
+
+```{r do_feet}
+for(j in 1:length(feet)) {
+  x <- feet[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[all_data$Name == x_names[k], j+1] <- x_area[k]
+  }
+ # all_data[all_data$Name %in% x_names, j+1] <- x_area  # the j+1 has to change
+}
+```
+
+```{r do_tissue}
+for(j in 1:length(tissue)) {
+  x <- tissue[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[all_data$Name == x_names[k], j+1+n_feet] <- x_area[k]
+  }
+}
+```
+
+```{r do_bone}
+for(j in 1:length(bone)) {
+  x <- bone[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[all_data$Name == x_names[k], j+1+n_feet+n_tissue] <- x_area[k]
+  }
+}
+```
+
+```{r do_blood}
+offset <- 1 + n_feet + n_tissue + n_bone
+for(j in 1:length(blood)) {
+  x <- blood[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[all_data$Name == x_names[k], j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r do_teeth}
+offset <- 1 + n_feet + n_tissue + n_bone + n_blood
+for(j in 1:length(teeth)) {
+  x <- teeth[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[all_data$Name == x_names[k], j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r do_FootB}
+offset <- 1 + n_feet + n_tissue + n_bone + n_blood + n_teeth
+for(j in 1:length(FootB)) {
+  x <- FootB[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[all_data$Name == x_names[k], j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r do_FootR}
+offset <- 1 + n_feet + n_tissue + n_bone + n_blood + n_teeth + n_FootB
+for(j in 1:length(FootR)) {
+  x <- FootR[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[all_data$Name == x_names[k], j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r do_FootS}
+offset <- 1 + n_feet + n_tissue + n_bone + n_blood + n_teeth + n_FootB + n_FootR
+for(j in 1:length(FootS)) {
+  x <- FootS[[j]]
+  x_names <- x$Name
+  x_area <- apply(x, MAR = 1, FUN = function(y) { 
+    z <- y[seq(3, length(y), 2)]; 
+    z <- as.numeric(z);
+    mean(z) })
+  for(k in 1:length(x_area)) {
+    all_data[all_data$Name == x_names[k], j+offset] <- x_area[k]
+  }
+}
+```
+
+```{r}
+write.csv(file = "pca_ready_all.csv", all_data, row.names = FALSE)
+```
+
+
