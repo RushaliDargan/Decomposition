@@ -1,4 +1,4 @@
-# GCxGC Decomposition Canada
+# GCxGC Decomposition Study in Canada
 PhD research project_UQTR
 The files in this repository are the work done to take initial outputs from a set of GCxGC scans of headspaces from decomposition targets, looking for relevant VOCs in the scans. This is an edited version of the the original respository, which can be found using the link: https://github.com/wesleyburr/GCxGC_Amputated_Limbs. 
 There are four main files, which:
